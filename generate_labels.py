@@ -1,9 +1,8 @@
 #!/usr/bin/env python3.6
 import argparse
-import functools
 import json
-import multiprocessing.pool
 import os
+import time
 import urllib.request
 
 
@@ -25,6 +24,8 @@ def _label(color, *, token, repo):
     request = urllib.request.Request(url, data=data, method='POST')
     request.add_header('Authorization', f'token {token}')
     urllib.request.urlopen(request)
+    # https://developer.github.com/v3/guides/best-practices-for-integrators/#dealing-with-abuse-rate-limits
+    time.sleep(1)
 
 
 def main(argv=None):
@@ -33,16 +34,10 @@ def main(argv=None):
     parser.add_argument('--dry-run', action='store_true')
     args = parser.parse_args(argv)
 
-    if args.dry_run:
-        mapper = map
-        func = print
-    else:
-        token = os.environ['GH_TOKEN']
-        mapper = multiprocessing.pool.ThreadPool(4).map
-        func = functools.partial(_label, token=token, repo=args.repo)
-
-    for _ in mapper(func, colors()):
-        pass
+    for color in colors():
+        print(f'Creating {color}')
+        if not args.dry_run:
+            _label(color, token=os.environ['GH_TOKEN'], repo=args.repo)
 
 
 if __name__ == '__main__':
